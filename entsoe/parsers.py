@@ -1,4 +1,5 @@
 import bs4
+import logging
 import pandas as pd
 from io import BytesIO
 import zipfile
@@ -238,7 +239,7 @@ def _parse_contracted_reserve_series(soup, tz, label):
     df.sort_index(inplace = True)
     index = _parse_datetimeindex(soup, tz)
     if len(index) > len(df.index):
-        print("Shortening index")
+        logging.debug("Shortening index")
         df.index = index[:len(df.index)]
     else:
         df.index = index
@@ -523,6 +524,8 @@ HEADERS_UNAVAIL_GEN = ['created_doc_time',
                        'production_resource_id',
                        'production_resource_name',
                        'production_resource_location',
+                       'production_power_resource_name',
+                       'production_power_resource_id',
                        'plant_type',
                        'nominal_power',
                        'start',
@@ -558,6 +561,8 @@ def _unavailability_gen_ts(soup: bs4.BeautifulSoup) -> list:
          get_attr('production_registeredresource.mrid'),
          get_attr('production_registeredresource.name'),
          get_attr('production_registeredresource.location.name'),
+         get_attr('production_registeredresource.psrtype.powersystemresources.name'),
+         get_attr('production_registeredresource.psrtype.powersystemresources.mrid'),
          PSRTYPE_MAPPINGS.get(get_attr(
              'production_registeredresource.psrtype.psrtype'), ""),
          get_float(get_attr('production_registeredresource.psrtype.powersystemresources.nominalp'))]
