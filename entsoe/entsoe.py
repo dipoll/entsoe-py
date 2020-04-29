@@ -24,6 +24,8 @@ __license__ = "MIT"
 
 URL = 'https://transparency.entsoe.eu/api'
 
+
+
 def retry(func):
     """Catches connection errors, waits and retries"""
     @wraps(func)
@@ -55,7 +57,7 @@ class EntsoeRawClient:
     """
 
     def __init__(self, api_key, session=None, retry_count=1, retry_delay=0,
-                 proxies=None):
+                 proxies=None, api_url=URL):
         """
         Parameters
         ----------
@@ -77,6 +79,8 @@ class EntsoeRawClient:
         self.proxies = proxies
         self.retry_count = retry_count
         self.retry_delay = retry_delay
+        self.api_url = api_url
+
 
     @retry
     def base_request(self, params, start, end):
@@ -101,8 +105,8 @@ class EntsoeRawClient:
         }
         params.update(base_params)
 
-        logging.debug(f'Performing request to {URL} with params {params}')
-        response = self.session.get(url=URL, params=params,
+        logging.debug(f'Performing request to {self.api_url} with params {params}')
+        response = self.session.get(url=self.api_url, params=params,
                                     proxies=self.proxies)
         try:
             response.raise_for_status()
@@ -1090,7 +1094,7 @@ class EntsoePandasClient(EntsoeRawClient):
     @paginated
     def query_unavailability(self, country_code, start, end, doctype,
                                      docstatus=None, periodstartupdate = None,
-                                     periodendupdate = None):
+                                     periodendupdate = None, truncate=True):
         """
         Parameters
         ----------
@@ -1115,12 +1119,13 @@ class EntsoePandasClient(EntsoeRawClient):
         df = df.tz_convert(TIMEZONE_MAPPINGS[country_code])
         df['start'] = df['start'].apply(lambda x: x.tz_convert(TIMEZONE_MAPPINGS[country_code]))
         df['end'] = df['end'].apply(lambda x: x.tz_convert(TIMEZONE_MAPPINGS[country_code]))
-        df = df.truncate(before=start, after=end)
+        if truncate:
+            df = df.truncate(before=start, after=end)
         return df
 
     def query_unavailability_of_generation_units(self, country_code, start, end,
                                      docstatus=None, periodstartupdate = None,
-                                     periodendupdate = None):
+                                     periodendupdate = None, truncate=True):
         """
         Parameters
         ----------
@@ -1138,7 +1143,7 @@ class EntsoePandasClient(EntsoeRawClient):
 
         df = self.query_unavailability(country_code=country_code, start=start, end=end,
                                        doctype="A80", docstatus=docstatus, periodstartupdate=periodstartupdate,
-                                       periodendupdate=periodendupdate)
+                                       periodendupdate=periodendupdate, truncate=truncate)
         return df
 
     def query_unavailability_of_production_units(self, country_code, start, end,
