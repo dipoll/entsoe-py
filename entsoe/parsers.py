@@ -517,6 +517,8 @@ _INV_BIDDING_ZONE_DICO = {k: v for (v, k) in BIDDING_ZONES.items()}
 
 HEADERS_UNAVAIL_GEN = ['created_doc_time',
                        'docstatus',
+                       'doc_id',
+                       'doc_ver',
                        'businesstype',
                        'biddingzone_domain',
                        'qty_uom',
@@ -649,6 +651,16 @@ def _outage_parser(xml_file: bytes, headers, ts_func) -> pd.DataFrame:
 
     soup = bs4.BeautifulSoup(xml_text, 'html.parser')
     try:
+        doc_id = soup.mrid.text
+    except AttributeError:
+        doc_id = None
+    try:
+        doc_ver = int(soup.revisionnumber.text)
+    except AttributeError:
+        print("Unknown document status", soup.revisionnumber.text)
+        doc_ver = 0
+        
+    try:
         creation_date = pd.Timestamp(soup.createddatetime.text)
     except AttributeError:
         creation_date = ""
@@ -656,11 +668,14 @@ def _outage_parser(xml_file: bytes, headers, ts_func) -> pd.DataFrame:
     try:
         docstatus = DOCSTATUS[soup.docstatus.value.text]
     except AttributeError:
+        print("Setting Docstatus to none value: ", soup.docstatus)
         docstatus = None
+    else:
+        print("Setting Docstatus to none value: ", soup.docstatus.value.text)
     d = list()
     series = _extract_timeseries(xml_text)
     for ts in series:
-        row = [creation_date, docstatus]
+        row = [creation_date, docstatus, doc_id, doc_ver]
         for t in ts_func(ts):
             d.append(row + t)
     df = pd.DataFrame.from_records(d, columns = headers)
